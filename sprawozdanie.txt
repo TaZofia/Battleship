@@ -1,1 +1,39 @@
-...
+Projekt nr 12 - Symulator gier planszowych
+Autorzy: Zofia Tarchalska, Kamil Starzewski
+
+Celem projektu jest stworzenie gry planszowej Tic-Tac-Toe (kółko-krzyżyk), która pozwala na rozgrywkę:
+
+1. gracz kontra gracz (klasyczna rozgrywka dwóch osób przy jednym urządzeniu)
+2. gracz kontra komputer (gdzie komputer korzysta z algorytmu AI np. minimax)
+
+Wstępny podział prac:
+Osoba 1:
+1. implementacja logiki gry w sposób czysto funkcyjny zawierająca:
+	- sprawdzanie zwycięstw, 
+	- sprawdzanie remisu,
+	- wykonanie ruchu, 
+	- sprawdzanie poprawności ruchu
+2. zaprojektowanie i implementacja prostego bota
+
+Osoba 2:
+1. stworzenie GUI:
+	- rysowanie planszy,
+	- rysowanie symboli kółka i krzyżyka,
+	- wizualizacja tego wszystkiego w czasie rzeczywistym
+2. integracja interfejsu z logiką gry, obsługa zdarzeń użytkownika (kliknięć itp.)
+
+Projekt będzie najprawdopodobniej wymagał bibliotek:
+1. Gloss - idealna do tworzenia grafiki 2D (czyli dokładnie to czego potrzebujemy żeby np. narysować planszę)
+2. containers - struktury danych (np. Map, Set), które mogą być pomocne przy zarządzaniu stanem gry
+3. random - przykładowo do losowania pierwszego gracza
+
+
+Przewidywana struktura:
+
+1. Main.hs - plik, w którym następuje uruchomienie programu
+2. GameLogic.hs - logika gry, jej reguły, bot
+3. Types.hs - definicje typów
+4. GUI.hs - rysowanie planszy i obsługa zdarzeń
+
+Możliwe jest rozdzielenie funkcjonalności jeszcze bardziej pomiędzy pliki, jednak na razie we wstępnej fazie projektu lepiej tego nie zakładać, zatem powyższa struktura to bezpieczne oszacowanie potrzebnego minimum.
+
