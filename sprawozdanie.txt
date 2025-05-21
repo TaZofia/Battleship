@@ -1,24 +1,21 @@
 Projekt nr 12 - Symulator gier planszowych
 Autorzy: Zofia Tarchalska, Kamil Starzewski
 
-Celem projektu jest stworzenie gry planszowej Tic-Tac-Toe (kółko-krzyżyk), która pozwala na rozgrywkę:
-
-1. gracz kontra gracz (klasyczna rozgrywka dwóch osób przy jednym urządzeniu)
-2. gracz kontra komputer (gdzie komputer korzysta z algorytmu AI np. minimax)
+Celem projektu jest stworzenie gry Battleship (gra w statki), która pozwala na rozgrywkę gracz kontra komputer (gdzie komputer korzysta z algorytmu AI np. minimax)
 
 Wstępny podział prac:
 Osoba 1:
 1. implementacja logiki gry w sposób czysto funkcyjny zawierająca:
 	- sprawdzanie zwycięstw, 
-	- sprawdzanie remisu,
-	- wykonanie ruchu, 
-	- sprawdzanie poprawności ruchu
+	- kontrolowanie czy ruch jest poprawny,
+	- kontrolowanie czy gracz stawia statki w poprawnym miejscu i czy nie próbuje np. postawić dwóch 4 elementowych statków
+	- kontrolowanie trafień i zatopień
 2. zaprojektowanie i implementacja prostego bota
 
 Osoba 2:
 1. stworzenie GUI:
 	- rysowanie planszy,
-	- rysowanie symboli kółka i krzyżyka,
+	- rysowanie symboli statków,
 	- wizualizacja tego wszystkiego w czasie rzeczywistym
 2. integracja interfejsu z logiką gry, obsługa zdarzeń użytkownika (kliknięć itp.)
 
