@@ -1,7 +1,7 @@
 Projekt nr 12 - Symulator gier planszowych
 Autorzy: Zofia Tarchalska, Kamil Starzewski
 
-Celem projektu jest stworzenie gry Battleship (gra w statki), która pozwala na rozgrywkę gracz kontra komputer (gdzie komputer korzysta z algorytmu AI np. minimax)
+Celem projektu jest stworzenie gry Battleship (gra w statki), która pozwala na rozgrywkę gracz kontra komputer (gdzie komputer korzysta z algorytmu AI)
 
 Wstępny podział prac:
 Osoba 1:
