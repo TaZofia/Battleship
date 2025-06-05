@@ -8,7 +8,7 @@ import Data.Maybe (isJust)
 
 -- Constants
 windowWidth, windowHeight :: Int
-windowWidth = 800
+windowWidth = 1200
 windowHeight = 600
 cellSize :: Float
 cellSize = 40
@@ -19,14 +19,14 @@ gridSize = 10
 data Phase = Placement | Battle | GameOver String deriving (Eq)
 data Turn = PlayerTurn | AITurn deriving (Eq)
 
--- Ship type
+-- Ship type, contains list of fields
 data Ship = Ship { tiles :: [(Int, Int)] } deriving (Show, Eq)
 
 -- Game state
 data GameState = GameState
-  { selected     :: (Int, Int)
+  { selected     :: (Int, Int)      -- current field
   , phase        :: Phase
-  , placedShips  :: [Ship]
+  , placedShips  :: [Ship]          -- player's ships
   , currentShip  :: [(Int, Int)]
   , shipPlan     :: [Int]
   , hits         :: [(Int, Int)]
@@ -42,7 +42,7 @@ initialState = GameState
   , phase        = Placement
   , placedShips  = []
   , currentShip  = []
-  , shipPlan     = [4,3,3,2,2,2,1,1,1,1]
+  , shipPlan     = [4,3,3,2,2,2,1,1,1,1]    -- standard ships requirement
   , hits         = []
   , aiShips      = []
   , aiGuesses    = []
@@ -51,13 +51,13 @@ initialState = GameState
 
 -- Main entry
 main :: IO ()
-main = play
+main = play         -- play: Gloss function, which starts a game
   (InWindow "Battleships" (windowWidth, windowHeight) (100, 100))
   white
   30
   initialState
   drawGame
-  handleInput
+  handleInput       -- player's input handling
   (\_ s -> s)
 
 -- Drawing
@@ -71,43 +71,61 @@ drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses tur
       , translate (-280) (-260) $ drawPhaseText phase turn shipPlan
       ]
 
-drawBoard :: [Ship] -> [(Int, Int)] -> (Int, Int) -> Bool -> String -> [(Int, Int)] -> [(Int, Int)] -> Bool -> Picture
+drawBoard
+ :: [Ship]          -- ships list (player's or AI)
+ -> [(Int, Int)]    -- ship while placing
+ -> (Int, Int)      -- selected field
+ -> Bool            -- ? highlight field ?
+ -> String          -- board title
+ -> [(Int, Int)]    -- enemy guesses (yellow)
+ -> [(Int, Int)]    -- hits (green)
+ -> Bool            -- hide ships? - AI case
+ -> Picture         -- result
+
 drawBoard ships temp sel highlight title enemyHits targets hideShips =
   let
-    allShipTiles = concatMap tiles ships
+    allShipTiles = concatMap tiles ships      -- list of fields with ships
     allTiles = allShipTiles ++ temp
+    -- (x, y) - field
     cellColor (x, y)
       | (x, y) `elem` temp = azure
       | (x, y) `elem` allShipTiles && (x, y) `elem` targets = green
-      | hideShips && (x, y) `elem` allShipTiles = black
-      | (x, y) `elem` allShipTiles = red
-      | (x, y) `elem` targets = red
+      | hideShips && (x, y) `elem` allShipTiles = black         -- black field if it's AI board (we hide ships)
+      | (x, y) `elem` allShipTiles = red        -- player's ship - filed red
+      | (x, y) `elem` targets = red             -- missed hit
       | otherwise = black
   in pictures $
     [ translate 0 220 $ scale 0.15 0.15 $ color black $ text title ] ++
-    [ translate x' y' $ pictures
+    [ translate x' y' $ pictures        -- counting coordinates for each filed in Gloss window
+        -- color as it was implemented in function cellColor
         [ color (cellColor (x,y)) $ rectangleSolid cellSize cellSize
-        , if (x,y) `elem` enemyHits then color yellow (rectangleSolid (cellSize / 2) (cellSize / 2)) else blank
+        , if (x,y) `elem` enemyHits
+            then color yellow (rectangleSolid (cellSize / 2) (cellSize / 2))
+            else blank
         , if highlight && sel == (x,y)
             then drawGreenOutline
             else color white $ rectangleWire cellSize cellSize
         ]
+
+    -- grid generator
     | x <- [0 .. gridSize - 1], y <- [0 .. gridSize - 1]
     , let x' = fromIntegral x * cellSize - (cellSize * fromIntegral gridSize) / 2 + cellSize / 2
           y' = fromIntegral y * cellSize - (cellSize * fromIntegral gridSize) / 2 + cellSize / 2
     ]
 
+
 drawGreenOutline :: Picture
 drawGreenOutline = color green $ pictures
-  [ translate 0 (cellSize / 2 - lw / 2) $ rectangleSolid cellSize lw
-  , translate 0 (-cellSize / 2 + lw / 2) $ rectangleSolid cellSize lw
-  , translate (cellSize / 2 - lw / 2) 0 $ rectangleSolid lw cellSize
-  , translate (-cellSize / 2 + lw / 2) 0 $ rectangleSolid lw cellSize
+  [ translate 0 (cellSize / 2 - lw / 2) $ rectangleSolid cellSize lw    -- frame upper line
+  , translate 0 (-cellSize / 2 + lw / 2) $ rectangleSolid cellSize lw   -- frame bootom line
+  , translate (cellSize / 2 - lw / 2) 0 $ rectangleSolid lw cellSize    -- frame right line
+  , translate (-cellSize / 2 + lw / 2) 0 $ rectangleSolid lw cellSize   -- frame left line
   ]
-  where lw = 4
+  where lw = 4      -- line width 4 px
 
+-- [Int] - list of ships to place
 drawPhaseText :: Phase -> Turn -> [Int] -> Picture
-drawPhaseText phase turn shipPlan = scale 0.15 0.15 . color black . text $
+drawPhaseText phase turn shipPlan = scale 0.15 0.15 . color black . text $     -- text - converts String to Picture
   case phase of
     Placement -> "Placement Phase: Place ships " ++ show shipPlan ++ " (Enter=Add, Tab=Confirm, Space=Start)"
     Battle    -> "Battle Phase - Turn: " ++ showTurn turn
@@ -116,7 +134,10 @@ drawPhaseText phase turn shipPlan = scale 0.15 0.15 . color black . text $
     showTurn PlayerTurn = "Player"
     showTurn AITurn     = "AI"
 
+
 handleInput :: Event -> GameState -> GameState
+
+-- when the game is over we ignore all keys and return game state without changes
 handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _) = gs
 
 handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn) =
@@ -139,11 +160,15 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
 
     KeyTab ->
       if phase == Placement && not (null plan) && validShip (head plan) current ships
-         then gs { placedShips = Ship current : ships
-                 , currentShip = []
-                 , shipPlan = tail plan
-                 }
-         else gs
+         then
+            let newShips = Ship current : ships
+                newPlan = tail plan
+                newState = gs { placedShips = newShips, currentShip = [], shipPlan = newPlan }
+            in if null newPlan
+                 then newState { phase = Battle, selected = (0,0), aiShips = mockAIShips }  -- start game if last ship is placed
+                 else newState
+            else gs
+
 
     KeySpace ->
       if phase == Placement && null plan
@@ -152,15 +177,18 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
 
     _ -> gs
 
+-- Backspace
 handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn) =
   gs { currentShip = [] }
 
 handleInput (EventKey (Char '\b') Down _ _) gs = gs
 
-handleInput _ s = s
+handleInput _ s = s     -- other? just ignore
 
+-- helper function
+--       field         shift      new position after shift
 move :: (Int, Int) -> (Int, Int) -> (Int, Int)
-move (x, y) (dx, dy) = (clamp 0 9 (x + dx), clamp 0 9 (y + dy))
+move (x, y) (dx, dy) = (clamp 0 9 (x + dx), clamp 0 9 (y + dy))   -- clamp - ensures coordinates are between 0 and 9
 clamp :: Int -> Int -> Int -> Int
 clamp lo hi = max lo . min hi
 
