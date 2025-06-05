@@ -1,0 +1,4 @@
+dziwny jest input handling ponieważ backspace jest innym rodzajem klawisza niż spacja i enter
+z jakiegoś powodu backspace nie jest klawiszem specjalnym
+
+w momencie kiedy klikniesz start gry mając nadal zaznaczone na niebiesko pola, te pola zostają niebieskie.
