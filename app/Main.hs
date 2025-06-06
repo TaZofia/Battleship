@@ -1,9 +1,8 @@
-
 module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Data.List (nub, delete)
+import Data.List (nub, delete, find)
 import Data.Maybe (isJust)
 
 -- Constants
@@ -30,7 +29,7 @@ data GameState = GameState
   , currentShip  :: [(Int, Int)]
   , shipPlan     :: [Int]
   , hits         :: [(Int, Int)]
-  , aiShips      :: [(Int, Int)]
+  , aiShips      :: [Ship]
   , aiGuesses    :: [(Int, Int)]
   , turn         :: Turn
   }
@@ -67,9 +66,14 @@ drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses tur
     GameOver msg -> scale 0.3 0.3 $ translate (-400) 0 $ color black $ text msg
     _ -> pictures
       [ translate (-250) 0 $ drawBoard placed current sel (phase == Placement) "Your Ships" aiGuesses [] False
-      , translate (250) 0  $ drawBoard [] [] sel (phase == Battle) "Enemy Board" hits (filter (`elem` aiShips) hits) True
+      , translate (250) 0  $ drawBoard aiShips [] sel (phase == Battle) "Enemy Board" hits (filter (`elem` concatMap tiles aiShips) hits) True
       , translate (-280) (-260) $ drawPhaseText phase turn shipPlan
       ]
+
+
+lookupShipAt :: (Int, Int) -> [Ship] -> Maybe Ship
+lookupShipAt pos = find (\ship -> pos `elem` tiles ship)
+
 
 drawBoard
  :: [Ship]          -- ships list (player's or AI)
@@ -86,13 +90,18 @@ drawBoard ships temp sel highlight title enemyHits targets hideShips =
   let
     allShipTiles = concatMap tiles ships      -- list of fields with ships
     allTiles = allShipTiles ++ temp
+
+    sunkShips = filter (\ship -> all (`elem` targets) (tiles ship)) ships
+    sunkTiles = concatMap tiles sunkShips
+
     -- (x, y) - field
     cellColor (x, y)
       | (x, y) `elem` temp = azure
+      | (x, y) `elem` sunkTiles = orange        -- sunk ships
       | (x, y) `elem` allShipTiles && (x, y) `elem` targets = green
       | hideShips && (x, y) `elem` allShipTiles = black         -- black field if it's AI board (we hide ships)
       | (x, y) `elem` allShipTiles = red        -- player's ship - filed red
-      | (x, y) `elem` targets = red             -- missed hit
+      | (x, y) `elem` targets = red
       | otherwise = black
   in pictures $
     [ translate 0 220 $ scale 0.15 0.15 $ color black $ text title ] ++
@@ -153,7 +162,7 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
          else if phase == Battle && turn == PlayerTurn && sel `notElem` hits
             then
               let newHits = sel : hits
-              in if all (`elem` newHits) aiShips
+              in if all (`elem` newHits) (concatMap tiles aiShips)
                     then gs { phase = GameOver "You Win" }
                     else aiTurn $ gs { hits = newHits, turn = AITurn }
             else gs
@@ -192,8 +201,16 @@ move (x, y) (dx, dy) = (clamp 0 9 (x + dx), clamp 0 9 (y + dy))   -- clamp - ens
 clamp :: Int -> Int -> Int -> Int
 clamp lo hi = max lo . min hi
 
-mockAIShips :: [(Int, Int)]
-mockAIShips = [(0,0),(0,1),(0,2),(0,3), (2,0),(2,1),(2,2), (4,0),(4,1), (6,0),(8,0),(8,2),(8,4)]
+mockAIShips :: [Ship]
+mockAIShips =
+  [ Ship { tiles = [(0,0), (0,1), (0,2), (0,3)] }
+  , Ship { tiles = [(2,0), (2,1), (2,2)] }
+  , Ship { tiles = [(4,0), (4,1)] }
+  , Ship { tiles = [(6,0)] }
+  , Ship { tiles = [(8,0)] }
+  , Ship { tiles = [(8,2)] }
+  , Ship { tiles = [(8,4)] }
+  ]
 
 aiTurn :: GameState -> GameState
 aiTurn gs@(GameState _ _ placed _ _ _ _ aiGuesses AITurn) =
