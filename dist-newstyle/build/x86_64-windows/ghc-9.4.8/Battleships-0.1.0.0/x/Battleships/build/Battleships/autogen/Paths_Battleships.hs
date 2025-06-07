@@ -46,12 +46,12 @@ getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: 
 
 
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
-bindir     = "C:\\cabal\\bin"
-libdir     = "C:\\cabal\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0-inplace-Battleships"
-dynlibdir  = "C:\\cabal\\x86_64-windows-ghc-9.4.8"
-datadir    = "C:\\cabal\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0"
-libexecdir = "C:\\cabal\\Battleships-0.1.0.0-inplace-Battleships\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0"
-sysconfdir = "C:\\cabal\\etc"
+bindir     = "K:\\cabal\\bin"
+libdir     = "K:\\cabal\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0-inplace-Battleships"
+dynlibdir  = "K:\\cabal\\x86_64-windows-ghc-9.4.8"
+datadir    = "K:\\cabal\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0"
+libexecdir = "K:\\cabal\\Battleships-0.1.0.0-inplace-Battleships\\x86_64-windows-ghc-9.4.8\\Battleships-0.1.0.0"
+sysconfdir = "K:\\cabal\\etc"
 
 getBinDir     = catchIO (getEnv "Battleships_bindir")     (\_ -> return bindir)
 getLibDir     = catchIO (getEnv "Battleships_libdir")     (\_ -> return libdir)

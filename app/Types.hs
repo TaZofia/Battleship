@@ -33,6 +33,7 @@ data GameState = GameState
   , aiGuesses    :: [(Int, Int)]
   , turn         :: Turn
   , rng          :: StdGen
+  , aiTargets    :: [(Int, Int)]
   }
 
 -- Initial game state
@@ -48,6 +49,7 @@ initialState gen = GameState
   , aiGuesses    = []
   , turn         = PlayerTurn
   , rng          = gen
+  , aiTargets    = []
   }
 
 

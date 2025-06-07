@@ -9,9 +9,9 @@ import System.Random (randomR)
 handleInput :: Event -> GameState -> GameState
 
 -- when the game is over we ignore all keys and return game state without changes
-handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _ _) = gs
+handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _ _ _) = gs
 
-handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn rng) =
+handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn rng aiTargets) =
   case key of
     KeyUp    -> gs { selected = move sel (0, 1) }
     KeyDown  -> gs { selected = move sel (0, -1) }
@@ -49,7 +49,7 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
     _ -> gs
 
 -- Backspace
-handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn rng) =
+handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn rng aiTargets) =
   gs { currentShip = [] }
 
 handleInput (EventKey (Char '\b') Down _ _) gs = gs
@@ -65,20 +65,54 @@ clamp lo hi = max lo . min hi
 
 
 aiTurn :: GameState -> GameState
-aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng) =
-  let allCoords = [ (x,y) | x <- [0..9], y <- [0..9] ]
+aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng aiTargets) =
+  let allCoords = [(x,y) | x <- [0..9], y <- [0..9]]
       unused = filter (`notElem` aiGuesses) allCoords
       playerShipTiles = concatMap tiles placed
-  in case unused of
-       [] -> gs { turn = PlayerTurn }
-       _  ->
-         let (index, newRng) = randomR (0, length unused - 1) rng
-             target = unused !! index
-             newGuesses = target : aiGuesses
-         in if all (`elem` newGuesses) playerShipTiles
-              then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
-              else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
+
+      orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
+      orthogonalNeighbors (x,y) = filter onBoard [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
+        where onBoard (a,b) = a >= 0 && a < 10 && b >= 0 && b < 10
+
+      addTargets :: (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
+      addTargets pos targets =
+        let neighbors = filter (`notElem` (aiGuesses ++ targets)) (orthogonalNeighbors pos)
+        in nub (targets ++ neighbors)  -- dodajemy na koniec kolejki
+
+  in case aiTargets of
+       [] ->
+         case unused of
+           [] -> gs { turn = PlayerTurn }
+           _  ->
+             let (index, newRng) = randomR (0, length unused - 1) rng
+                 target = unused !! index
+                 newGuesses = target : aiGuesses
+             in if all (`elem` newGuesses) playerShipTiles
+                   then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
+                   else
+                     if target `elem` playerShipTiles
+                        then gs { aiGuesses = newGuesses, turn = AITurn, rng = newRng, aiTargets = addTargets target [] }
+                        else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
+
+       (t:ts) ->
+         if t `elem` aiGuesses
+            then aiTurn gs { aiTargets = ts }
+            else
+              let newGuesses = t : aiGuesses
+              in if all (`elem` newGuesses) playerShipTiles
+                    then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", aiTargets = ts }
+                    else
+                      if t `elem` playerShipTiles
+                         then gs { aiGuesses = newGuesses, turn = AITurn, aiTargets = addTargets t ts }
+                         else gs { aiGuesses = newGuesses, turn = PlayerTurn, aiTargets = ts }
 aiTurn gs = gs
+
+
+orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
+orthogonalNeighbors (x,y) = filter onBoard [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
+  where
+    onBoard (a,b) = a >= 0 && a < 10 && b >= 0 && b < 10
+
 
 validShip :: Int -> [(Int, Int)] -> [Ship] -> Bool
 validShip size shipTiles existing =

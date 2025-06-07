@@ -7,7 +7,7 @@ import Data.List (find)
 
 -- Drawing
 drawGame :: GameState -> Picture
-drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses turn rng) =
+drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses turn rng aiTargets) =
   case phase of
     GameOver msg -> scale 0.3 0.3 $ translate (-400) 0 $ color black $ text msg
     _ -> pictures
@@ -39,7 +39,7 @@ drawBoard ships temp sel highlight title enemyHits targets hideShips =
       | (x, y) `elem` temp = azure
       | (x, y) `elem` sunkTiles = orange        -- sunk ships
       | (x, y) `elem` allShipTiles && (x, y) `elem` targets = green
-      | hideShips && (x, y) `elem` allShipTiles = black         -- black field if it's AI board (we hide ships)
+      -- | hideShips && (x, y) `elem` allShipTiles = black         -- black field if it's AI board (we hide ships)
       | (x, y) `elem` allShipTiles = red        -- player's ship - filed red
       | (x, y) `elem` targets = red
       | otherwise = black
