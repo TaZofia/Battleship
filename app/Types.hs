@@ -51,16 +51,3 @@ initialState gen = GameState
   , rng          = gen
   , aiTargets    = []
   }
-
-
--- Mock ships for AI
-mockAIShips :: [Ship]
-mockAIShips =
-  [ Ship { tiles = [(0,0), (0,1), (0,2), (0,3)] }
-  , Ship { tiles = [(2,0), (2,1), (2,2)] }
-  , Ship { tiles = [(4,0), (4,1)] }
-  , Ship { tiles = [(6,0)] }
-  , Ship { tiles = [(8,0)] }
-  , Ship { tiles = [(8,2)] }
-  , Ship { tiles = [(8,4)] }
-  ]

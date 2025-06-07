@@ -36,14 +36,14 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
                 newPlan = tail plan
                 newState = gs { placedShips = newShips, currentShip = [], shipPlan = newPlan }
             in if null newPlan
-                 then newState { phase = Battle, selected = (0,0), aiShips = mockAIShips }  -- start game if last ship is placed
+                 then newState { phase = Battle, selected = (0,0) }  -- start game if last ship is placed
                  else newState
             else gs
 
 
     KeySpace ->
       if phase == Placement && null plan
-         then gs { phase = Battle, selected = (0,0), aiShips = mockAIShips }
+         then gs { phase = Battle, selected = (0,0) }
          else gs
 
     _ -> gs
@@ -70,19 +70,17 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
       unused = filter (`notElem` aiGuesses) allCoords
       playerShipTiles = concatMap tiles placed
 
-      orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
-      orthogonalNeighbors (x,y) = filter onBoard [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
-        where onBoard (a,b) = a >= 0 && a < 10 && b >= 0 && b < 10
-
-      addTargets :: (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
-      addTargets pos targets =
+      -- Dodaje do aiTargets tylko pola w górę, dół, lewo, prawo od trafionego pola,
+      -- które nie są już w aiGuesses ani w aiTargets
+      addOrthogonalTargets :: (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
+      addOrthogonalTargets pos targets =
         let neighbors = filter (`notElem` (aiGuesses ++ targets)) (orthogonalNeighbors pos)
-        in nub (targets ++ neighbors)  -- dodajemy na koniec kolejki
+        in nub (targets ++ neighbors)
 
   in case aiTargets of
-       [] ->
+       [] -> -- lista celów pusta, losowy ruch
          case unused of
-           [] -> gs { turn = PlayerTurn }
+           [] -> gs { turn = PlayerTurn } -- brak pól do strzału, przekaz ruch
            _  ->
              let (index, newRng) = randomR (0, length unused - 1) rng
                  target = unused !! index
@@ -91,23 +89,24 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
                    then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
                    else
                      if target `elem` playerShipTiles
-                        then gs { aiGuesses = newGuesses, turn = AITurn, rng = newRng, aiTargets = addTargets target [] }
+                        then gs { aiGuesses = newGuesses, turn = AITurn, rng = newRng, aiTargets = addOrthogonalTargets target [] }
                         else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
 
-       (t:ts) ->
+       (t:ts) -> -- lista celów niepusta, wykonaj ruch z pierwszego celu i usuń go z listy
          if t `elem` aiGuesses
-            then aiTurn gs { aiTargets = ts }
+            then aiTurn gs { aiTargets = ts } -- jeśli już strzelono w to pole, pomiń i idź dalej
             else
               let newGuesses = t : aiGuesses
               in if all (`elem` newGuesses) playerShipTiles
                     then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", aiTargets = ts }
                     else
                       if t `elem` playerShipTiles
-                         then gs { aiGuesses = newGuesses, turn = AITurn, aiTargets = addTargets t ts }
+                         then gs { aiGuesses = newGuesses, turn = AITurn, aiTargets = addOrthogonalTargets t ts }
                          else gs { aiGuesses = newGuesses, turn = PlayerTurn, aiTargets = ts }
+
 aiTurn gs = gs
 
-
+-- Funkcja zwraca cztery pola: góra, dół, lewo, prawo, jeśli mieszczą się na planszy
 orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
 orthogonalNeighbors (x,y) = filter onBoard [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
   where
