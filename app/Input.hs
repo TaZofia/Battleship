@@ -70,39 +70,15 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
       unused = filter (`notElem` aiGuesses) allCoords
       playerShipTiles = concatMap tiles placed
 
-      -- Dodaje do aiTargets tylko pola w górę, dół, lewo, prawo od trafionego pola,
-      -- które nie są już w aiGuesses ani w aiTargets
-      addOrthogonalTargets :: (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
-      addOrthogonalTargets pos targets =
-        let neighbors = filter (`notElem` (aiGuesses ++ targets)) (orthogonalNeighbors pos)
-        in nub (targets ++ neighbors)
+      (index, newRng) = randomR (0, length unused - 1) rng
+      target = unused !! index
+      newGuesses = target : aiGuesses
 
-  in case aiTargets of
-       [] -> -- lista celów pusta, losowy ruch
-         case unused of
-           [] -> gs { turn = PlayerTurn } -- brak pól do strzału, przekaz ruch
-           _  ->
-             let (index, newRng) = randomR (0, length unused - 1) rng
-                 target = unused !! index
-                 newGuesses = target : aiGuesses
-             in if all (`elem` newGuesses) playerShipTiles
-                   then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
-                   else
-                     if target `elem` playerShipTiles
-                        then gs { aiGuesses = newGuesses, turn = AITurn, rng = newRng, aiTargets = addOrthogonalTargets target [] }
-                        else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
-
-       (t:ts) -> -- lista celów niepusta, wykonaj ruch z pierwszego celu i usuń go z listy
-         if t `elem` aiGuesses
-            then aiTurn gs { aiTargets = ts } -- jeśli już strzelono w to pole, pomiń i idź dalej
-            else
-              let newGuesses = t : aiGuesses
-              in if all (`elem` newGuesses) playerShipTiles
-                    then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", aiTargets = ts }
-                    else
-                      if t `elem` playerShipTiles
-                         then gs { aiGuesses = newGuesses, turn = AITurn, aiTargets = addOrthogonalTargets t ts }
-                         else gs { aiGuesses = newGuesses, turn = PlayerTurn, aiTargets = ts }
+  in if null unused
+       then gs { turn = PlayerTurn }  -- brak ruchów
+       else if all (`elem` newGuesses) playerShipTiles
+              then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
+              else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
 
 aiTurn gs = gs
 
