@@ -7,7 +7,7 @@ import Data.List (find)
 
 -- Drawing
 drawGame :: GameState -> Picture
-drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses turn) =
+drawGame (GameState sel phase placed current shipPlan hits aiShips aiGuesses turn rng) =
   case phase of
     GameOver msg -> scale 0.3 0.3 $ translate (-400) 0 $ color black $ text msg
     _ -> pictures

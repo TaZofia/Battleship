@@ -3,14 +3,15 @@ module Input where
 import Graphics.Gloss.Interface.Pure.Game
 import Types
 import Data.List (nub, find)
+import System.Random (randomR)
 
 
 handleInput :: Event -> GameState -> GameState
 
 -- when the game is over we ignore all keys and return game state without changes
-handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _) = gs
+handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _ _) = gs
 
-handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn) =
+handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn rng) =
   case key of
     KeyUp    -> gs { selected = move sel (0, 1) }
     KeyDown  -> gs { selected = move sel (0, -1) }
@@ -48,7 +49,7 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
     _ -> gs
 
 -- Backspace
-handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn) =
+handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn rng) =
   gs { currentShip = [] }
 
 handleInput (EventKey (Char '\b') Down _ _) gs = gs
@@ -64,17 +65,19 @@ clamp lo hi = max lo . min hi
 
 
 aiTurn :: GameState -> GameState
-aiTurn gs@(GameState _ _ placed _ _ _ _ aiGuesses AITurn) =
+aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng) =
   let allCoords = [ (x,y) | x <- [0..9], y <- [0..9] ]
       unused = filter (`notElem` aiGuesses) allCoords
       playerShipTiles = concatMap tiles placed
   in case unused of
-       []    -> gs { turn = PlayerTurn }
-       (a:_) ->
-         let newGuesses = a : aiGuesses
+       [] -> gs { turn = PlayerTurn }
+       _  ->
+         let (index, newRng) = randomR (0, length unused - 1) rng
+             target = unused !! index
+             newGuesses = target : aiGuesses
          in if all (`elem` newGuesses) playerShipTiles
-               then gs { aiGuesses = newGuesses, phase = GameOver "You Lose" }
-               else gs { aiGuesses = newGuesses, turn = PlayerTurn }
+              then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
+              else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
 aiTurn gs = gs
 
 validShip :: Int -> [(Int, Int)] -> [Ship] -> Bool

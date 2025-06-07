@@ -1,6 +1,7 @@
 module Types where
 
 import Graphics.Gloss
+import System.Random (StdGen)
 
 -- Constants
 windowWidth, windowHeight :: Int
@@ -31,21 +32,24 @@ data GameState = GameState
   , aiShips      :: [Ship]
   , aiGuesses    :: [(Int, Int)]
   , turn         :: Turn
+  , rng          :: StdGen
   }
 
 -- Initial game state
-initialState :: GameState
-initialState = GameState
+initialState :: StdGen -> GameState
+initialState gen = GameState
   { selected     = (0, 0)
   , phase        = Placement
   , placedShips  = []
   , currentShip  = []
-  , shipPlan     = [4,3,3,2,2,2,1,1,1,1]    -- standard ships requirement
+  , shipPlan     = [4,3]
   , hits         = []
   , aiShips      = []
   , aiGuesses    = []
   , turn         = PlayerTurn
+  , rng          = gen
   }
+
 
 -- Mock ships for AI
 mockAIShips :: [Ship]
