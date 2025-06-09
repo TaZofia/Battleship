@@ -78,30 +78,29 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
 
       newGuesses = target : aiGuesses
       isHit = target `elem` playerShipTiles
-      updatedHits = if isHit then target : hits else hits
+      updatedHits = if isHit then nub (target : hits) else hits
 
       maybeHitShip = find (\s -> target `elem` tiles s) placed
       isSunk = case maybeHitShip of
         Just ship -> all (`elem` updatedHits) (tiles ship)
         Nothing -> False
 
-      avoidTiles = case maybeHitShip of
-        Just ship | isSunk -> concatMap touchingTiles (tiles ship)
+      -- NOWOŚĆ: analiza całego trafionego statku, a nie tylko ostatniego pola
+      hitCluster = case maybeHitShip of
+        Just ship | not isSunk -> filter (`elem` updatedHits) (tiles ship)
         _ -> []
 
-      -- Jeśli trafił i nie zatopił, dodaj orthogonal neighbors
+      neighborsOfCluster = concatMap orthogonalNeighbors hitCluster
+
       newTargetsFromHit
         | isHit && not isSunk =
-            filter (`notElem` (newGuesses ++ remainingTargets ++ avoidTiles))
-                   (orthogonalNeighbors target)
+            filter (`notElem` (newGuesses ++ remainingTargets)) neighborsOfCluster
         | otherwise = []
 
-      cleanedTargets = filter (`notElem` avoidTiles) remainingTargets
-
       updatedTargets
-        | isSunk     = []  -- statek zatopiony: wyczyść wszystkie cele
-        | isHit      = cleanedTargets ++ newTargetsFromHit  -- trafiono, ale nie zatopiono: dodaj sąsiadów
-        | otherwise  = cleanedTargets  -- pudło: tylko usuń niedozwolone cele
+        | isSunk     = []  -- statek zatopiony: wyczyść cele
+        | isHit      = remainingTargets ++ newTargetsFromHit
+        | otherwise  = remainingTargets
 
   in if null unused
        then gs { turn = PlayerTurn }
@@ -116,6 +115,7 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
                 }
 
 aiTurn gs = gs
+
 
 
 
