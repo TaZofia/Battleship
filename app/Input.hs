@@ -70,28 +70,54 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
       playerShipTiles = concatMap tiles placed
       unused = filter (`notElem` aiGuesses) allCoords
 
-      -- wybór celu: najpierw z aiTargets, potem losowo
-      (target, newTargets, newRng) = case filter (`notElem` aiGuesses) aiTargets of
-        (t:ts) -> (t, ts, rng)  -- strzał z listy celów
-        [] ->
-          let (index, r) = randomR (0, length unused - 1) rng
-          in (unused !! index, [], r)
+      -- Wybór celu: z aiTargets lub losowo
+      (target, remainingTargets, newRng) = case filter (`notElem` aiGuesses) aiTargets of
+        (t:ts) -> (t, ts, rng)
+        [] -> let (index, r) = randomR (0, length unused - 1) rng
+              in (unused !! index, [], r)
 
       newGuesses = target : aiGuesses
       isHit = target `elem` playerShipTiles
-
-      -- dodaj sąsiednie pola do celów, jeśli trafiono
-      neighbors (x, y) = filter (`elem` unused) [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
-      updatedTargets = if isHit then newTargets ++ neighbors target else newTargets
       updatedHits = if isHit then target : hits else hits
 
+      maybeHitShip = find (\s -> target `elem` tiles s) placed
+      isSunk = case maybeHitShip of
+        Just ship -> all (`elem` updatedHits) (tiles ship)
+        Nothing -> False
+
+      avoidTiles = case maybeHitShip of
+        Just ship | isSunk -> concatMap touchingTiles (tiles ship)
+        _ -> []
+
+      -- Jeśli trafił i nie zatopił, dodaj orthogonal neighbors
+      newTargetsFromHit
+        | isHit && not isSunk =
+            filter (`notElem` (newGuesses ++ remainingTargets ++ avoidTiles))
+                   (orthogonalNeighbors target)
+        | otherwise = []
+
+      cleanedTargets = filter (`notElem` avoidTiles) remainingTargets
+
+      updatedTargets
+        | isSunk     = []  -- statek zatopiony: wyczyść wszystkie cele
+        | isHit      = cleanedTargets ++ newTargetsFromHit  -- trafiono, ale nie zatopiono: dodaj sąsiadów
+        | otherwise  = cleanedTargets  -- pudło: tylko usuń niedozwolone cele
+
   in if null unused
-       then gs { turn = PlayerTurn }  -- brak ruchów
+       then gs { turn = PlayerTurn }
        else if all (`elem` newGuesses) playerShipTiles
               then gs { aiGuesses = newGuesses, hits = updatedHits, phase = GameOver "You Lose", rng = newRng }
-              else gs { aiGuesses = newGuesses, hits = updatedHits, aiTargets = updatedTargets, turn = PlayerTurn, rng = newRng }
+              else gs
+                { aiGuesses = newGuesses
+                , hits = updatedHits
+                , aiTargets = updatedTargets
+                , turn = PlayerTurn
+                , rng = newRng
+                }
 
 aiTurn gs = gs
+
+
 
 -- Funkcja zwraca cztery pola: góra, dół, lewo, prawo, jeśli mieszczą się na planszy
 orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
