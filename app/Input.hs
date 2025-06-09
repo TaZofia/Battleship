@@ -67,18 +67,29 @@ clamp lo hi = max lo . min hi
 aiTurn :: GameState -> GameState
 aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng aiTargets) =
   let allCoords = [(x,y) | x <- [0..9], y <- [0..9]]
-      unused = filter (`notElem` aiGuesses) allCoords
       playerShipTiles = concatMap tiles placed
+      unused = filter (`notElem` aiGuesses) allCoords
 
-      (index, newRng) = randomR (0, length unused - 1) rng
-      target = unused !! index
+      -- wybór celu: najpierw z aiTargets, potem losowo
+      (target, newTargets, newRng) = case filter (`notElem` aiGuesses) aiTargets of
+        (t:ts) -> (t, ts, rng)  -- strzał z listy celów
+        [] ->
+          let (index, r) = randomR (0, length unused - 1) rng
+          in (unused !! index, [], r)
+
       newGuesses = target : aiGuesses
+      isHit = target `elem` playerShipTiles
+
+      -- dodaj sąsiednie pola do celów, jeśli trafiono
+      neighbors (x, y) = filter (`elem` unused) [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
+      updatedTargets = if isHit then newTargets ++ neighbors target else newTargets
+      updatedHits = if isHit then target : hits else hits
 
   in if null unused
        then gs { turn = PlayerTurn }  -- brak ruchów
        else if all (`elem` newGuesses) playerShipTiles
-              then gs { aiGuesses = newGuesses, phase = GameOver "You Lose", rng = newRng }
-              else gs { aiGuesses = newGuesses, turn = PlayerTurn, rng = newRng }
+              then gs { aiGuesses = newGuesses, hits = updatedHits, phase = GameOver "You Lose", rng = newRng }
+              else gs { aiGuesses = newGuesses, hits = updatedHits, aiTargets = updatedTargets, turn = PlayerTurn, rng = newRng }
 
 aiTurn gs = gs
 
