@@ -34,6 +34,7 @@ data GameState = GameState
   , turn         :: Turn
   , rng          :: StdGen
   , aiTargets    :: [(Int, Int)]
+  , playerHitsTaken :: [(Int, Int)]  -- AI hits player
   }
 
 -- Initial game state
@@ -50,4 +51,5 @@ initialState gen = GameState
   , turn         = PlayerTurn
   , rng          = gen
   , aiTargets    = []
+  , playerHitsTaken = []
   }

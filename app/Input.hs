@@ -5,13 +5,12 @@ import Types
 import Data.List (nub, find)
 import System.Random (randomR)
 
-
 handleInput :: Event -> GameState -> GameState
 
 -- when the game is over we ignore all keys and return game state without changes
-handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _ _ _) = gs
+handleInput _ gs@(GameState _ (GameOver _) _ _ _ _ _ _ _ _ _ _ ) = gs
 
-handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn rng aiTargets) =
+handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships current plan hits aiShips aiGuesses turn rng aiTargets playerHitsTaken) =
   case key of
     KeyUp    -> gs { selected = move sel (0, 1) }
     KeyDown  -> gs { selected = move sel (0, -1) }
@@ -36,10 +35,9 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
                 newPlan = tail plan
                 newState = gs { placedShips = newShips, currentShip = [], shipPlan = newPlan }
             in if null newPlan
-                 then newState { phase = Battle, selected = (0,0) }  -- start game if last ship is placed
+                 then newState { phase = Battle, selected = (0,0) }
                  else newState
-            else gs
-
+         else gs
 
     KeySpace ->
       if phase == Placement && null plan
@@ -49,23 +47,22 @@ handleInput (EventKey (SpecialKey key) Down _ _) gs@(GameState sel phase ships c
     _ -> gs
 
 -- Backspace
-handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn rng aiTargets) =
+handleInput (EventKey (Char '\b') Down _ _) gs@(GameState sel Placement placed _ plan hits aiShips aiGuesses turn rng aiTargets playerHitsTaken) =
   gs { currentShip = [] }
 
 handleInput (EventKey (Char '\b') Down _ _) gs = gs
 
-handleInput _ s = s     -- other? just ignore
+handleInput _ s = s
 
 -- helper function
---       field         shift      new position after shift
 move :: (Int, Int) -> (Int, Int) -> (Int, Int)
-move (x, y) (dx, dy) = (clamp 0 9 (x + dx), clamp 0 9 (y + dy))   -- clamp - ensures coordinates are between 0 and 9
+move (x, y) (dx, dy) = (clamp 0 9 (x + dx), clamp 0 9 (y + dy))
 clamp :: Int -> Int -> Int -> Int
 clamp lo hi = max lo . min hi
 
-
+-- AI TURN
 aiTurn :: GameState -> GameState
-aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng aiTargets) =
+aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn rng aiTargets playerHitsTaken) =
   let allCoords = [(x,y) | x <- [0..9], y <- [0..9]]
       playerShipTiles = concatMap tiles placed
       unused = filter (`notElem` aiGuesses) allCoords
@@ -78,37 +75,37 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
 
       newGuesses = target : aiGuesses
       isHit = target `elem` playerShipTiles
-      updatedHits = if isHit then nub (target : hits) else hits
+      updatedHits = if isHit then nub (target : playerHitsTaken) else playerHitsTaken
 
       maybeHitShip = find (\s -> target `elem` tiles s) placed
       isSunk = case maybeHitShip of
         Just ship -> all (`elem` updatedHits) (tiles ship)
         Nothing -> False
 
-      -- NOWOŚĆ: analiza całego trafionego statku, a nie tylko ostatniego pola
-      hitCluster = case maybeHitShip of
-        Just ship | not isSunk -> filter (`elem` updatedHits) (tiles ship)
-        _ -> []
+      currentTargetCluster =
+        case maybeHitShip of
+          Just ship | not isSunk -> filter (`elem` updatedHits) (tiles ship)
+          _ -> []
 
-      neighborsOfCluster = concatMap orthogonalNeighbors hitCluster
+      potentialTargets = concatMap orthogonalNeighbors currentTargetCluster
 
-      newTargetsFromHit
-        | isHit && not isSunk =
-            filter (`notElem` (newGuesses ++ remainingTargets)) neighborsOfCluster
-        | otherwise = []
+      newTargetsFromHit =
+        if isHit && not isSunk
+           then filter (`notElem` (newGuesses ++ remainingTargets)) potentialTargets
+           else []
 
       updatedTargets
-        | isSunk     = []  -- statek zatopiony: wyczyść cele
+        | isSunk     = []
         | isHit      = remainingTargets ++ newTargetsFromHit
         | otherwise  = remainingTargets
 
   in if null unused
        then gs { turn = PlayerTurn }
        else if all (`elem` newGuesses) playerShipTiles
-              then gs { aiGuesses = newGuesses, hits = updatedHits, phase = GameOver "You Lose", rng = newRng }
+              then gs { aiGuesses = newGuesses, playerHitsTaken = updatedHits, phase = GameOver "You Lose", rng = newRng }
               else gs
                 { aiGuesses = newGuesses
-                , hits = updatedHits
+                , playerHitsTaken = updatedHits
                 , aiTargets = updatedTargets
                 , turn = PlayerTurn
                 , rng = newRng
@@ -116,16 +113,13 @@ aiTurn gs@(GameState sel phase placed current plan hits aiShips aiGuesses AITurn
 
 aiTurn gs = gs
 
-
-
-
--- Funkcja zwraca cztery pola: góra, dół, lewo, prawo, jeśli mieszczą się na planszy
+-- Sąsiedzi ortogonalni
 orthogonalNeighbors :: (Int, Int) -> [(Int, Int)]
 orthogonalNeighbors (x,y) = filter onBoard [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
   where
     onBoard (a,b) = a >= 0 && a < 10 && b >= 0 && b < 10
 
-
+-- Walidacja statku
 validShip :: Int -> [(Int, Int)] -> [Ship] -> Bool
 validShip size shipTiles existing =
      length shipTiles == size
@@ -135,6 +129,7 @@ validShip size shipTiles existing =
     allOccupied = concatMap tiles existing
     allOccupiedOrTouching = allOccupied ++ concatMap touchingTiles allOccupied
 
+-- Czy pola statku są sąsiadujące
 allAdjacent :: [(Int, Int)] -> Bool
 allAdjacent [] = False
 allAdjacent (x:xs) = dfs [x] [] == length (nub (x:xs))
@@ -145,6 +140,7 @@ allAdjacent (x:xs) = dfs [x] [] == length (nub (x:xs))
       | otherwise = dfs (adjacentTo t (x:xs) ++ ts) (t:visited)
     adjacentTo (x,y) tiles = [ (a,b) | (a,b) <- tiles, (abs (x-a) + abs (y-b)) == 1 ]
 
+-- Pola przyległe
 touchingTiles :: (Int, Int) -> [(Int, Int)]
 touchingTiles (x,y) = [ (x+dx, y+dy) | dx <- [-1..1], dy <- [-1..1], (dx,dy) /= (0,0),
                                        x+dx >= 0, x+dx < 10, y+dy >= 0, y+dy < 10 ]
