@@ -5,7 +5,7 @@ import System.Random (StdGen)
 
 -- Constants
 windowWidth, windowHeight :: Int
-windowWidth = 1200
+windowWidth = 1300
 windowHeight = 600
 
 cellSize :: Float

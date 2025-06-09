@@ -74,7 +74,7 @@ drawGreenOutline = color green $ pictures
 drawPhaseText :: Phase -> Turn -> [Int] -> Picture
 drawPhaseText phase turn shipPlan = scale 0.15 0.15 . color black . text $
   case phase of
-    Placement -> "Placement Phase: Place ships " ++ show shipPlan ++ " (Enter=Add, Tab=Confirm, Space=Start)"
+    Placement -> "Placement Phase: Place ships " ++ show shipPlan ++ " (Enter=Add, Tab=Confirm, Backspace=Reset)"
     Battle    -> "Battle Phase - Turn: " ++ showTurn turn
     GameOver _ -> "Game Over"
   where
